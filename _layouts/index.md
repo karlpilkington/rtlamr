@@ -1,0 +1,163 @@
+---
+layout: index
+title: "RTL-SDR Automatic Meter Reader"
+date: 2014-01-13 08:01
+comments: true
+categories: 
+---
+
+Until a few months ago I had only been using my RTL-SDR dongle for exploring local radio activity. When I discovered that my power meter was a so-called "smart meter" that broadcast consumption data I did quite a lot of looking for an SDR based receiver for these messages. Unfortunately the only real work I've found that has been done on this was using a sub-GHz packet radio by Texas Instruments[^cc1111]. The evaluation dongle is ~$50 and in order to actually use it you also need at least the CC-Debugger or a GoodFET[^goodfet] which are both another ~\$50. On the other hand the RTL-SDR is \$20 and sufficient to receive these messages.
+
+Instead of having dedicated hardware and baked-in handling for all kinds of RF related procedures the RTL-SDR offloads this work to software. This project has a few primary goals:
+
+ * Provide a cheap(er) noninvasive solution for tracking whole-house power usage. In particular focus on receiving SCM packets only.
+ * Determine hopping pattern for a particular meter to simplify usage of CC1111 dongle.
+
+
+### ERT Protocol
+
+Before getting into the details of writing a receiver using the RTL-SDR lets discuss some characteristics of a common AMR protocol known as Electronic Receiver Transmitter or ERT[^ert].
+
+ERT is a wireless protocol which is available on a number of utility meters for various commodities such as electricity, gas, water and so on. The protocol broadcasts one of two different message types: Interval Data and Standard Consumption. IDM's contain time of use consumption data which is basically just a table of time offsets and differential consumption for each time slot. SCM's simply contain the current consumption value.
+
+Both messages are broadcast as a Manchester coded[^manchester] signal in the 915MHz ISM band[^ismband]. The protocol implements FHSS which I will discuss shortly. The symbol rate is 32,768kSps which with Manchester coding produces 16,384kbps bit rate.
+
+The SCM message structure is as follows:
+
+<table class="table table-bordered table-striped table-condensed table-hover">
+    <thead>
+        <tr>
+            <th>Field Name</th>
+            <th>Length (bits)</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr><td>Preamble</td><td>21</td><td>Indicates start of message: 0x1F2A60</td></tr>
+        <tr><td>ID MSB</td><td>2</td><td>Two most significant bits of device identifier.</td></tr>
+        <tr><td>Reserved</td><td>1</td><td></td></tr>
+        <tr><td>Tamper - Physical</td><td>2</td><td>Physical tamper status.</td></tr>
+        <tr><td>Commodity Type</td><td>4</td><td>Specifies the commodity type (eg. electricity, gas, water)</td></tr>
+        <tr><td>Tamper - Encoder</td><td>2</td><td>Encoder tamper status.</td></tr>
+        <tr><td>Consumption</td><td>24</td><td>Current consumption value.</td></tr>
+        <tr><td>ID LSB</td><td>24</td><td>24 least significant bits of device identifier.</td></tr>
+        <tr><td>Checksum</td><td>16</td><td>BCH (255, 239) error correcting code. Computed over last 4 bits of preamble through the ID LSB&#8217;s.</td></tr>
+    </tbody>
+</table>
+
+
+### FHSS
+Frequency-hopping spread spectrum[^fhss] is multiple access method used to reduce interference with devices operating in the same spectrum. Essentially this method consists of short transmissions over a range of different frequencies. The FCC allows higher transmission power while using FHSS without requiring additional licensing.
+
+In my case the Itron Centron C1SR transmits on 50 channels. These channels are defined in the FCC Test Report for FCC ID SK9C1A-3.
+
+RTL-SDR dongles aren't exactly a one-size-fits-all solution for all your SDR needs but they are capable enough to produce proof of concept. One limitation in particular is the maximum bandwidth, which on typical systems maxes out at 2.4MHz. This means that we can't just park the receiver in the middle of the spectrum smart meters broadcast on and expect to receive all such messages. At best we can receive 12 channels out of the available 50 simultaneously. For determining the hopping pattern of a particular meter this is sufficient.
+
+This post will focus on the basics of receiving and decoding the messages, solving the FHSS problem will be covered in a future post.
+
+### Signal Flow
+The signal received from the dongle through `rtl_tcp` is AM demodulated and passed through a preamble detector, starting at the most likely preamble location the signal is match filtered and bit sliced. After bit slicing error correction is performed to reject invalid packets and is finally displayed to the terminal. This is sort of a "if it looks like a message and smells like a message, then it must be a message." approach.
+
+<img class="center" src="/images/block.svg">
+
+### Sampling and AM Demodulation
+Ignoring for now the particulars of getting samples from the device into the program, we have some processing that needs done on the samples to make them useful for our purpose. Samples as they arrive from the device are interleaved in-phase and quadrature samples represented as unsigned 8-bit integers. Generally the samples would be packed into a complex value and normalized if the receiver was coherent[^coherence]. For simplicity we'll ignore FHSS related problems and focus only on receiving and decoding messages no matter what channel they were received on. AM demodulation is optimized using a lookup table. Ignoring symmetry there are only 65536 possible values, accounting for symmetry and normalization this can be reduced to ~16384.
+
+Since we're only interested in the magnitude of the sample we remove the offset and take the absolute value of each component before using the lookup table. The end result is essentially the evaluation this equation:
+
+<div>$$mag(I, Q) = \sqrt{\left(\frac{I-127.5}{127.5}\right)^2 + \left(\frac{Q-127.5}{127.5}\right)^2}$$</div>
+
+
+In the actual implementation, we omit the square-root since it has no real meaning for our particular use.
+
+### Preamble Detection
+
+Each SCM packet begins with a preamble to indicate to receivers the start of a message. Currently detecting the preamble is implemented in two forms, the first uses convolution via FFT to determine the location of the preamble (if one exists). The second performs direct convolution and is optimized using cumulative summation, this is only possible if the basis function for the preamble can be generalized in a few particular ways. This method also allows us to re-use some intermediate data from convolution in the matched filter.
+
+Because the signal is Manchester coded, bits are encoded in the transitions. This has two benefits: symbols are symmetric and of fixed length. Given the sampling rate and the symbol rate we can calculate the length of the symbol as follows:
+
+<div>$$
+    \text{Symbol Length}
+    = \frac{\text{Sample Rate}}{\text{Symbol Rate}}
+    = \frac{2.4\mathrm{MS/s}}{32.768\mathrm{kS/s}}
+    = 73.242 \text{ samples}
+$$</div>
+
+
+A Manchester coded symbol consists of two symbols, one high and one low, the order determines the value. In the case of SCM packets, high-to-low indicates a 1 bit and the inverse indicates a 0. The symmetry of the symbol allows us to write a basis function for matched filtering which reduces bit slicing to a simple sign comparison when sampling at the correct points.
+
+<img class="center" src="/images/basis.svg">
+
+The preamble is detected by convolving the signal with a basis function consisting of the expected transitions of the preamble, the ArgMax of the resulting signal represents the position at which the preamble most likely exists.
+
+<img class="center" src="/images/preamble_detect.svg">
+
+The image above consists of three plots, the AM demodulated signal, the result of convolution and a truncated view of the ArgMax of convolution. The preamble length and computed start position are indicated on the signal and convolution plots while the preamble basis function and convolution are overlayed on the truncated view.
+
+### Matched Filtering and Bit Slicing
+
+Now that we know the highest probable location of the preamble, we can use this information to perform matched filtering and determine the values of individual bits. Manchester coding ensures that bits all occur at fixed time slots relative to the beginning of the message. Convolving the signal with the basis function from above essentially reduces to a sort of integrate and dump filter. The basis function has the added benefit that simplifies bit slicing to a simple sign check. If at a particular bit time slot the first symbol is high and the second symbol is low, the convolution produces a positive value representing a 1 bit, and vice versa.
+
+The main benefit to this method is that thresholding is not required to determine a bit value, only a sign check. This eliminates the possibility of missing a packet that may have decoded properly just because it's power level was below some arbitrary threshold.
+
+<img class="center" src="/images/matched_filter.svg">
+
+The plot above shows the filtered signal as well as a truncated view with the filtered signal overlayed with the demodulated signal. The red lines indicate the points at which each bit will be sampled. Note that to illustrate the sampling points the demodulated signal is shifted by one symbol length in the plot, this has no effect on the sampling as it works only with the filtered signal and preamble starting position.
+
+In most cases clock drift would cause this method to lose synchronization between the bit slicer and the signal. That being said, the data rate is high enough and the message is short enough that we can ignore this without a noticeable loss in accuracy. If this were taken into account it would suffice to use an early/late gating method to adjust the position of each bit relative to the previous and next bits.
+
+As mentioned earlier direct convolution for this particular case can be made fairly efficient. The cumulative sum over the incoming signal is computed. This reduces the summation at each sample to the difference between a pair of subtractions.
+
+<div>$$
+\begin{eqnarray*}
+    \mathbf{M}_i &=& \sum_{j=i}^{i+N} \mathbf{S}_j - \mathbf{S}_{j+N} \\\\
+    &=& (\mathbf{C}_{i+N} - \mathbf{C}_i) - (\mathbf{C}_{i+2N} - \mathbf{C}_{i+N}) \\\\
+    &=& 2\mathbf{C}_{i+N}-\mathbf{C}_{i+2 N}-\mathbf{C}_i
+\end{eqnarray*}
+$$</div>
+
+Where $\mathbf{M}$ is the matched filter vector, $\mathbf{S}$ is the sample vector, $N$ is the symbol length and $\mathbf{C}$ is the cumulative or prefix sum of the signal. In most modern computer architectures, floating point multiplication and floating point addition operate in more or less the same amount of time. The primary difference in time will be writing your code such that the compiler (if any) can effectively vectorize the operations for SIMD architectures.
+
+### Error Correction
+Each message contains a 16-bit checksum created by a BCH[^bch] error correcting code. The checksum is computed over the last 4 bits of the preamble up through the least significant bits of the device identifier. Verification of the checksum acts as a sort of filter to reject invalid packets. This is necessary since the approach taken would generate a message for all received blocks regardless of whether the signal contains a message or not. In a previous version only the preamble was verified which had a high false-positive rate. This ensures that the received message is actually a message and not noise which appears to be a message.
+
+Verification is done using a linear feedback shift register. The basic operation is as follows:
+
+ * Shift MSB in from signal (FIFO order).
+ * Shift register MSB out (again, FIFO).
+ * If the bit shifted out is 1 then xor the contents of the register with the generator polynomial.
+ * Rinse and repeat.
+
+The generator polynomial for this particular BCH implementation is:
+<div>$$G = x^{16}+x^{14}+x^{13}+x^{11}+x^{10}+x^9+x^8+x^6+x^5+x+1$$</div>
+
+The polynomial is converted to a bit string where 1's exist at the power of each non-zero coefficient.
+<div>$$G = \text{0b10110111101100011}$$</div>
+
+When the portion of the message which is checksummed has been completely shifted through the register, the value of the register is known as a syndrome. When the syndrome is zero, this indicates the message is valid and there are no bit errors.
+
+Error correction is currently implemented by pre-computing syndromes corresponding to all possible combinations of the number of errors to be corrected. These syndromes are stored in a map with the positions of each error that created the syndrome. Correction is done by calculating the syndrome and checking to see if it is either 0 or exists in the syndrome map.
+
+It is possible to determine the location of errors directly using syndrome values but this is currently unimplemented. As one of my professors would say:
+
+<blockquote>The theory behind this involves an awful lot of hand-waving.</blockquote>
+
+### External Dependencies
+
+The main guts of this project are written in Go[^golang] which presents a few challenges. First of which is that while Go is capable of calling C code it is ugly, difficult to setup and takes quite a lot more effort and thought to avoid subverting the safety Go inherently provides. Second, while Go is relatively fast compared with things like python it is not fast enough to perform certain procedures in real-time. Despite these issues we still depend on two things: FFTW[^fftw] and `rtl_tcp`.
+
+It's kind of stupid how efficient FFTW is compared with pretty much any other implementations. If for example we wanted to implement a 32,768 point real to complex DFT in Go, my Core-i7 3770k achieves around 30MSps (after extensive optimization and profiling) while FFTW achieves ~150MSps. The primary performance goal is for this to run in real-time on my Intel Atom D525. I've gotten a pure Go FFT optimized enough that this goal may be possible but is currently not integrated into the project.
+
+Getting samples from the dongle into a Go program is actually relatively simple if you're willing to sacrifice some simplicity while executing the program. Wrapping the library librtlsdr itself is possible but ugly and requires some strange hacks to allow asynchronous sampling because of the need for C to call back into Go. Instead the approach used is to wrap the TCP interface provided by the `rtl_tcp` tool from librtlsdr.
+
+[^cc1111]: [TI CC1111 USB Dongle](http://www.ti.com/corp/docs/landing/cc1111/)
+[^goodfet]: [GoodFET](http://GoodFET.sourceforge.net/)
+[^ert]: [Electronic Receiver Transmitter](https://en.wikipedia.org/wiki/Encoder_receiver_transmitter)
+[^manchester]: [Manchester Coding](https://en.wikipedia.org/wiki/Manchester_code)
+[^ook]: [On-off keying](https://en.wikipedia.org/wiki/On-off_keying)
+[^ismband]: [ISM Band](https://en.wikipedia.org/wiki/ISM_band)
+[^fhss]: [FHSS](https://en.wikipedia.org/wiki/FHSS)
+[^coherence]: [Coherence](https://en.wikipedia.org/wiki/Coherence_\(physics\))
+[^bch]: [BCH Error Correcting Code](https://en.wikipedia.org/wiki/BCH_code)
+[^golang]: [GoLang](http://golang.org/)
+[^fftw]: [FFTW](http://www.fftw.org/)
