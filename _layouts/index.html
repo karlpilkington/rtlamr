@@ -56,10 +56,10 @@
           <div class="list-group">
                 {% assign url = page.url %}
                 {% for page in site.pages %}
-                  <a class="list-group-item {% if url == page.url %}active{% endif %}" href="{{page.url | remove:'index.html'}}">{{page.navtitle}}</a>
+                  <a class="list-group-item {% if url == page.url %}active{% endif %}" href="{{site.baseurl}}/{{page.url | remove:'index.html'}}">{{page.navtitle}}</a>
                 {% endfor %}
                 {% for post in site.posts %}
-                  <a class="list-group-item {% if url == post.url %}active{% endif %}" href="{{post.url}}">{{post.title}}</a>
+                  <a class="list-group-item {% if url == post.url %}active{% endif %}" href="{{site.baseurl}}/{{post.url}}">{{post.title}}</a>
                 {% endfor %}
               </div>
           </div>
