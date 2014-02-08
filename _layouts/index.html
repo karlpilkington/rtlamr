@@ -1,41 +1,89 @@
-<!doctype html>
-<html>
+
+<!DOCTYPE html>
+<html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>RTLAMR by bemasher</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <title>RTLAMR</title>
 
-    <link rel="stylesheet" href="stylesheets/styles.css">
-    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!-- Bootstrap core CSS -->
+    <link href="/stylesheets/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="/stylesheets/index.css" rel="stylesheet">
+
+    <!-- Just for debugging purposes. Don't actually copy this line! -->
+    <!--[if lt IE 9]><script src="../../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
+
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
-    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
     <![endif]-->
   </head>
+
   <body>
-    <div class="wrapper">
-      <header>
-        <h1>RTLAMR</h1>
-        <p>An rtl-sdr receiver for smart meters operating in the 900MHz ISM band.</p>
+    <div class="container-fluid">
+      <div class="row-fluid">
+        <div class="col-lg-2">
+            <ul class="nav nav-list sidenav">
+              {% for page in site.pages %}
+                <li><a href="{{page.url | remove:'index.html'}}">{{page.navtitle}}</a></li>
+              {% endfor %}
+              {% for post in site.posts %}
+                <li><a href="{{post.url}}">{{post.title}}</a></li>
+              {% endfor %}
+              <div class="btn-group btn-block">
+                <button type="button btn-block" class="btn btn-default">Left</button>
+                <button type="button btn-block" class="btn btn-default">Middle</button>
+                <button type="button btn-block" class="btn btn-default">Right</button>
+              </div>
+            </ul>
+        </div>
 
-        <p class="view"><a href="https://github.com/bemasher/rtlamr">View the Project on GitHub <small>bemasher/rtlamr</small></a></p>
+        <div class="col-lg-9 panel panel-default">
+          <h1>{{page.title}}</h1>
+          <p class="lead">{{page.excerpt}}</p>
+          {{content}}
 
+          <div id="disqus_thread"></div>
+          <script type="text/javascript">
+              /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+              var disqus_shortname = 'rtlamr'; // required: replace example with your forum shortname
 
-        <ul>
-          <li><a href="https://github.com/bemasher/rtlamr/zipball/master">Download <strong>ZIP File</strong></a></li>
-          <li><a href="https://github.com/bemasher/rtlamr/tarball/master">Download <strong>TAR Ball</strong></a></li>
-          <li><a href="https://github.com/bemasher/rtlamr">View On <strong>GitHub</strong></a></li>
-        </ul>
-      </header>
-      <section>
-        {{content}}
-      </section>
-      <footer>
-        <p>This project is maintained by <a href="https://github.com/bemasher">bemasher</a></p>
-        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
-      </footer>
+              /* * * DON'T EDIT BELOW THIS LINE * * */
+              (function() {
+                  var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+                  dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+                  (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+              })();
+          </script>
+          <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+          <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+        </div>
+      </div>
     </div>
-    <script src="javascripts/scale.fix.js"></script>
-    
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
+    <script src="/javascripts/bootstrap.min.js"></script>
+    <!-- <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        extensions: ["tex2jax.js"],
+        jax: ["input/TeX","output/HTML-CSS"],
+        tex2jax: {
+          inlineMath: [['$', '$']],
+          displayMath: [['$$', '$$']],
+          processEscapes: true
+        }
+      });
+    </script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script> -->
   </body>
 </html>

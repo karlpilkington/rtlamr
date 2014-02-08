@@ -1,0 +1,55 @@
+\documentclass{article}
+\usepackage{siunitx}
+\usepackage{tikz}
+
+\usetikzlibrary{chains,backgrounds,fit,shapes,arrows,shapes.geometric,calc}
+\renewcommand{\familydefault}{\sfdefault}
+
+\tikzset{
+	antenna/.style={
+		draw,
+		regular polygon,
+		regular polygon sides = 3,
+		shape border rotate=180,
+		minimum width = 1cm,
+	}
+}
+
+\pgfrealjobname{block}
+\begin{document}
+	\tikzstyle{block} = [draw, rectangle, minimum height=2.5em, node distance=3cm, minimum width=6em, align=center]
+	\tikzstyle{border} = [draw, rectangle, inner sep=1em]
+	\tikzstyle{label} = [minimum height=1.5em]
+
+	\beginpgfgraphicnamed{block-f1}
+	\begin{tikzpicture}[auto, thick, node distance=2cm, >=latex']
+		\node[antenna] (antenna) {};
+		\node[block, below right of=antenna, yshift=0.75cm, xshift=0.5cm] (rtl-sdr) {RTL-SDR};
+		\node[label, above of=rtl-sdr, yshift=-1cm] (rtl-label) {Hardware};
+		\node[border, fit=(rtl-label)(rtl-sdr)] (rtl-sdr_border) {};
+
+		\node[block, right of=rtl-sdr, xshift=0.5cm] (rtl-tcp) {rtl\_tcp};
+		\node[block, right of=rtl-tcp] (am) {AM\\Demodulation};
+		\node[block, right of=am] (preamble) {Preamble\\Detection};
+		\node[block, below of=rtl-tcp, yshift=1.5cm] (matched-filter) {Matched\\Filter};
+		\node[block, right of=matched-filter] (bit-slice) {Bit Slice};
+		\node[block, right of=bit-slice] (error) {Error\\Correction};
+		\node[label, right of=error, xshift=0.5cm] (output) {Output};
+
+		\node[label, at=($(rtl-tcp)!0.5!(preamble)$), yshift=1cm] (software) {Software};
+		\node[border, fit=(rtl-tcp)(software)(am)(preamble)(matched-filter)(bit-slice)(error)] {};
+
+		\draw [->, rounded corners=5pt] (antenna.south) |- (rtl-sdr.west);
+
+		\draw [->] (rtl-sdr) -- (rtl-tcp);
+		\draw [->] (rtl-tcp) -- (am);
+		\draw [->] (am) -- (preamble);
+		\draw [->, rounded corners=5pt] (preamble.south)
+			|- ($(preamble.south)!0.5!(matched-filter.north)$)
+			-| (matched-filter.north);
+		\draw [->] (matched-filter) -- (bit-slice);
+		\draw [->] (bit-slice) -- (error);
+		\draw [->] (error) -- (output);
+	\end{tikzpicture}
+	\endpgfgraphicnamed
+\end{document}
