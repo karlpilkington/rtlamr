@@ -26,27 +26,14 @@
   </head>
 
   <body>
-    <div class="container-fluid">
-      <div class="row-fluid">
-        <div class="col-lg-2">
-            <ul class="nav nav-list sidenav">
-              {% for page in site.pages %}
-                <li><a href="{{page.url | remove:'index.html'}}">{{page.navtitle}}</a></li>
-              {% endfor %}
-              {% for post in site.posts %}
-                <li><a href="{{post.url}}">{{post.title}}</a></li>
-              {% endfor %}
-              <div class="btn-group btn-block">
-                <button type="button btn-block" class="btn btn-default">Left</button>
-                <button type="button btn-block" class="btn btn-default">Middle</button>
-                <button type="button btn-block" class="btn btn-default">Right</button>
-              </div>
-            </ul>
+    <div class="container">
+      <div class="row">
+        <div class="jumbotron col-md-12">
+          <h1>RTLAMR</h1>
+          <p>An rtl-sdr receiver for smart meters operating in the 900MHz ISM band.</p>
         </div>
 
-        <div class="col-lg-9 panel panel-default">
-          <h1>{{page.title}}</h1>
-          <p class="lead">{{page.excerpt}}</p>
+        <div class="col-md-9 panel panel-default">
           {{content}}
 
           <div id="disqus_thread"></div>
@@ -64,6 +51,19 @@
           <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
           <a href="http://disqus.com" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
         </div>
+
+        <div class="col-md-3">
+          <div class="list-group">
+                {% assign url = page.url %}
+                {% for page in site.pages %}
+                  <a class="list-group-item {% if url == page.url %}active{% endif %}" href="{{page.url | remove:'index.html'}}">{{page.navtitle}}</a>
+                {% endfor %}
+                {% for post in site.posts %}
+                  <a class="list-group-item {% if url == post.url %}active{% endif %}" href="{{post.url}}">{{post.title}}</a>
+                {% endfor %}
+              </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -72,7 +72,7 @@
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
     <script src="/javascripts/bootstrap.min.js"></script>
-    <!-- <script type="text/x-mathjax-config">
+    <script type="text/x-mathjax-config">
       MathJax.Hub.Config({
         extensions: ["tex2jax.js"],
         jax: ["input/TeX","output/HTML-CSS"],
@@ -84,6 +84,6 @@
       });
     </script>
     <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-    </script> -->
+    </script>
   </body>
 </html>

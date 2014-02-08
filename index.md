@@ -6,12 +6,11 @@ excerpt: An rtl-sdr receiver for smart meters operating in the 900MHz ISM band.
 ---
 
 ### Purpose
-Until a few months ago I had only been using my RTL-SDR dongle for exploring local radio activity. When I discovered that my power meter was a so-called "smart meter" that broadcast consumption data I did quite a lot of looking for an SDR based receiver for these messages. Unfortunately the only real work I've found that has been done on this was using a sub-GHz packet radio by Texas Instruments[^cc1111]. The evaluation dongle is ~\\$50 and in order to actually use it you also need at least the CC-Debugger or a GoodFET[^goodfet] which are both another ~\\$50. On the other hand the RTL-SDR is \\$20 and sufficient to receive these messages.
+For several years now utilities have been using "smart meters" to optimize their residential meter reading infrastructure. Smart meters continuously transmit consumption information in the 900MHz ISM band allowing utilities to simply send readers driving through neighborhoods to collect commodity consumption information. The protocol used to transmit these messages is fairly straight forward, however I have yet to find any reasonably priced product for receiving these messages.
 
-Instead of having dedicated hardware and baked-in handling for all kinds of RF related procedures the RTL-SDR offloads this work to software. This project has a few primary goals:
+This project is a proof of concept software defined radio receiver for these messages. We make use of an inexpensive rtl-sdr dongle to allow users to non-invasively record and analyze the commodity consumption of their household.
 
- * Provide a cheap(er) noninvasive solution for tracking whole-house power usage. In particular focus on receiving SCM packets only.
- * Determine hopping pattern for a particular meter to simplify usage of CC1111 dongle.
+Currently the only known supported and tested meter is the Itron C1SR. However, the protocol is designed to be useful for several different commodities and should be capable of receiving messages from any ERT capable smart meter.
 
 ### Requirements
  * GoLang >=1.2
