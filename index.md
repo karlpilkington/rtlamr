@@ -88,3 +88,4 @@ If you have any general questions or feedback leave a comment below. For bugs, f
  * Move away from dependence on FFTW. While FFTW is a great library integration with Go is messy and it's absence would greatly simplify the build process.
  * Implement direct error correction rather than brute-force method.
  * Finish tools for discovery and usage of hopping pattern for a particular meter. There's enough material in this alone for another writeup.
+ * Implement adaptive thresholding for better false positive discrimination.
