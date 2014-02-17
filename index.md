@@ -36,6 +36,12 @@ The second package needed is [`github.com/bemasher/fftw`](http://godoc.org/githu
 	dlltool -d libfftw3-3.def -D libfftw3-3.dll -l $GOPATH/src/github.com/bemasher/fftw/libfftw3.a
 	go install github.com/bemasher/fftw
 
+Once all the prerequisites are met building the executable is as follows:
+
+	go build github.com/bemasher/rtlamr
+
+This will produce an rtlamr binary in the current working directory.
+
 ### Usage
 Available command-line flags are as follows:
 
