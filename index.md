@@ -39,7 +39,7 @@ The second package needed is [`github.com/bemasher/fftw`](http://godoc.org/githu
 ### Usage
 Available command-line flags are as follows:
 
-	$ rtlamr.exe -h
+	$ rtlamr -h
 	Usage of rtlamr:
 	  -centerfreq=920299072: center frequency to receive on
 	  -duration=0: time to run for, 0 for infinite
@@ -50,7 +50,7 @@ Available command-line flags are as follows:
 Running the receiver is as simple as starting an `rtl_tcp` instance and then starting the receiver:
 
 	$ rtl_tcp -a 0.0.0.0 &
-	$ recv
+	$ rtlamr
 
 Output is as follows, note that the meter ID's and checksums have been obscured to avoid releasing potentially sensitive information:
 
