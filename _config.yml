@@ -1,8 +1,11 @@
 safe: true
 lsi: false
 pygments: true
-markdown: kramdown
 baseurl: /rtlamr
+
+markdown: kramdown
+kramdown:
+  input: GFM
 
 source: .
 layouts: ./_layouts
