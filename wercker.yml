@@ -1,7 +1,7 @@
 box: wercker/golang@1.1.2
 build:
-  steps:
-    - bundle-install
-    - script:
-      name: install libfftw3-dev
-      code: sudo apt-get install libfftw3-dev
+    steps:
+        - bundle-install
+        - script:
+            name: install libfftw3-dev
+            code: sudo apt-get install libfftw3-dev
